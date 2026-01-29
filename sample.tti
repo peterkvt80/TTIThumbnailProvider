@@ -1,0 +1,27 @@
+DE,Teletext Sample Page
+DS,inserter
+SP,E:\peterstuff\downloads\sample.tti
+PN,10000
+SC,0000
+PS,8000
+CT,8,T
+OL,28,@@@@@Cu_@|wKpZA`UB_wLs_w}ww]_}_wM@@
+OL,0,[GTest TTeletext Page                   
+OL,2,ARED   BGREEN  CYELLOW FCYAN            
+OL,4, Page 1                                 
+OL,5,A``````````````````````````````````````-
+OL,6,G Welcome to Teletext!                  
+OL,7,A``````````````````````````````````````-
+OL,9, This is an example teletext page.      
+OL,11,F It supports:                          
+OL,12,  C* Multiple colors                    
+OL,13,   * YGraphics mode                     
+OL,14,  * Text formatting                     
+OL,16, Q``````````````````````````````````````
+OL,17,F  For more info press:                 
+OL,18,A   RED for News                        
+OL,19,B   GREEN for Sport                     
+OL,20,C   YELLOW for Weather                  
+OL,21,Q ``````````````````````````````````````
+OL,23,C  Test Page             B  10 Jan 12:34
+OL,24,[Q``````````````````````````````````````
