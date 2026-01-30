@@ -53,6 +53,9 @@ public:
     // Parse TTI format data
     bool ParseTTI(const std::vector<uint8_t>& data);
     
+    // Parse EP1 format data
+    bool ParseEP1(const std::vector<uint8_t>& data);
+    
     // Render page to bitmap
     HBITMAP RenderToBitmap(UINT width, UINT height);
     

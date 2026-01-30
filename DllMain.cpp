@@ -228,6 +228,19 @@ STDAPI DllRegisterServer()
                 (DWORD)((wcslen(szCLSID) + 1) * sizeof(WCHAR)));
             RegCloseKey(hKey);
         }
+        
+        // Register thumbnail handler for .ep1 extension
+        hKey = NULL;
+        hr = HRESULT_FROM_WIN32(RegCreateKeyExW(HKEY_CLASSES_ROOT,
+            L".ep1\\shellex\\{e357fccd-a995-4576-b01f-234630154e96}",
+            0, NULL, REG_OPTION_NON_VOLATILE, KEY_WRITE, NULL, &hKey, NULL));
+        
+        if (SUCCEEDED(hr))
+        {
+            RegSetValueExW(hKey, NULL, 0, REG_SZ, (LPBYTE)szCLSID,
+                (DWORD)((wcslen(szCLSID) + 1) * sizeof(WCHAR)));
+            RegCloseKey(hKey);
+        }
     }
 
     return hr;
@@ -240,6 +253,7 @@ STDAPI DllUnregisterServer()
     if (SUCCEEDED(hr))
     {
         RegDeleteTreeW(HKEY_CLASSES_ROOT, L".tti\\shellex");
+        RegDeleteTreeW(HKEY_CLASSES_ROOT, L".ep1\\shellex");
     }
 
     return hr;

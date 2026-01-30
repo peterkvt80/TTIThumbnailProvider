@@ -49,6 +49,141 @@ bool TeletextPage::ParseTTI(const std::vector<uint8_t>& data)
     return foundFirstPage;
 }
 
+bool TeletextPage::ParseEP1(const std::vector<uint8_t>& data)
+{
+    // EP1 format:
+    // Header: 6 bytes (FE 01 09 00 00 00)
+    // Data: 24 rows × 40 characters = 960 bytes
+    // Footer: 2 bytes (00 00)
+    // Total: 968 bytes minimum
+    
+    if (data.size() < 968)
+    {
+        return false;
+    }
+    
+    // Verify header
+    if (data[0] != 0xFE || data[1] != 0x01 || data[2] != 0x09)
+    {
+        return false;
+    }
+    
+    // Parse 24 rows of data (rows 0-23 in the file, which map to rows 1-24 in our array)
+    // Row 0 in EP1 corresponds to row 1 in teletext (we skip the header row in rendering)
+    size_t offset = 6; // Skip header
+    
+    for (int row = 0; row < 24 && offset + 40 <= data.size(); row++)
+    {
+        // EP1 rows 0-23 map to teletext rows 1-24
+        int teletextRow = row + 1;
+        
+        // Parse character data with escape sequence handling
+        TeletextColor currentFg = WHITE;
+        TeletextColor currentBg = BLACK;
+        bool graphicsMode = false;
+        bool separated = false;
+        bool doubleHeight = false;
+        
+        int colIndex = 0;
+        for (int i = 0; i < 40 && colIndex < SCREEN_COLS; i++)
+        {
+            uint8_t ch = data[offset + i] & 0x7F; // Strip parity bit
+            
+            // Check for ESC (0x1B) followed by encoded byte
+            if (ch == 0x1B && i + 1 < 40)
+            {
+                i++;
+                ch = data[offset + i] & 0x3F; // Mask with 0x3F as per validate function
+            }
+            
+            // Control codes
+            if (ch < 0x20)
+            {
+                switch (ch)
+                {
+                    case 0x00: case 0x01: case 0x02: case 0x03: case 0x04:
+                    case 0x05: case 0x06: case 0x07:
+                        currentFg = (TeletextColor)ch;
+                        graphicsMode = false;
+                        break;
+                        
+                    case 0x10: case 0x11: case 0x12: case 0x13: case 0x14:
+                    case 0x15: case 0x16: case 0x17:
+                        currentFg = (TeletextColor)(ch - 0x10);
+                        graphicsMode = true;
+                        break;
+                        
+                    case 0x19: // Contiguous graphics
+                        separated = false;
+                        break;
+                        
+                    case 0x1A: // Separated graphics
+                        separated = true;
+                        break;
+                        
+                    case 0x1C: // Black background
+                        currentBg = BLACK;
+                        break;
+                        
+                    case 0x1D: // New background
+                        currentBg = currentFg;
+                        break;
+                        
+                    case 0x0D: // Double height
+                        doubleHeight = true;
+                        break;
+                        
+                    case 0x0C: // Normal height
+                        doubleHeight = false;
+                        break;
+                }
+                
+                m_cells[teletextRow][colIndex].character = L' ';
+                m_cells[teletextRow][colIndex].foreground = currentFg;
+                m_cells[teletextRow][colIndex].background = currentBg;
+                m_cells[teletextRow][colIndex].doubleHeight = doubleHeight;
+                colIndex++;
+            }
+            else
+            {
+                m_cells[teletextRow][colIndex].foreground = currentFg;
+                m_cells[teletextRow][colIndex].background = currentBg;
+                m_cells[teletextRow][colIndex].graphics = graphicsMode;
+                m_cells[teletextRow][colIndex].separated = separated;
+                m_cells[teletextRow][colIndex].doubleHeight = doubleHeight;
+                
+                if (graphicsMode && ch >= 0x20 && ch <= 0x7F)
+                {
+                    // Graphics mode - use teletext graphics characters
+                    m_cells[teletextRow][colIndex].character = GetGraphicsChar(ch, separated);
+                }
+                else
+                {
+                    // Alphanumeric mode - handle special character mappings
+                    if (ch == 0x7E)  // '~' (tilde)
+                    {
+                        m_cells[teletextRow][colIndex].character = 0x00F7;  // Division sign
+                    }
+                    else if (ch == 0x7F)
+                    {
+                        m_cells[teletextRow][colIndex].character = 0xE65F;  // Special teletext character
+                    }
+                    else
+                    {
+                        // Regular character
+                        m_cells[teletextRow][colIndex].character = (wchar_t)ch;
+                    }
+                }
+                colIndex++;
+            }
+        }
+        
+        offset += 40; // Move to next row
+    }
+    
+    return true;
+}
+
 void TeletextPage::ParseLine(const std::string& line, int rowIndex)
 {
     if (rowIndex < 0 || rowIndex >= SCREEN_ROWS) return;

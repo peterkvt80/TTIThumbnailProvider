@@ -1,6 +1,6 @@
 # TTI Thumbnail Provider for Windows
 
-A Windows Shell Extension that automatically generates thumbnail previews for Teletext (TTI) files in Windows Explorer.
+A Windows Shell Extension that automatically generates thumbnail previews for Teletext files (TTI and EP1 formats) in Windows Explorer.
 
 ## Overview
 
@@ -8,7 +8,10 @@ This thumbnail provider reads TTI (Teletext) files and renders the first page as
 
 ## Features
 
-- **Automatic thumbnail generation** for .tti files in Windows Explorer
+- **Automatic thumbnail generation** for .tti and .ep1 files in Windows Explorer
+- **Multiple format support**:
+  - **TTI format**: Text-based teletext intermediate format with escaped control codes
+  - **EP1 format**: Binary teletext format (Edit.tf EP1 format)
 - **Teletext format support**:
   - Standard 40x25 character teletext pages
   - Full color palette (8 colors: black, red, green, yellow, blue, magenta, cyan, white)

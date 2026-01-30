@@ -96,9 +96,23 @@ IFACEMETHODIMP TTIThumbnailProvider::GetThumbnail(UINT cx, HBITMAP *phbmp, WTS_A
     if (FAILED(hr))
         return hr;
     
-    // Parse TTI file
+    // Parse file - detect format by checking header
     TeletextPage page;
-    if (!page.ParseTTI(buffer))
+    bool parsed = false;
+    
+    // Check for EP1 format (header: FE 01 09)
+    if (buffer.size() >= 968 && 
+        buffer[0] == 0xFE && buffer[1] == 0x01 && buffer[2] == 0x09)
+    {
+        parsed = page.ParseEP1(buffer);
+    }
+    else
+    {
+        // Try TTI format
+        parsed = page.ParseTTI(buffer);
+    }
+    
+    if (!parsed)
         return E_FAIL;
     
     // Render to bitmap
