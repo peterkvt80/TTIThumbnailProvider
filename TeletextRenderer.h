@@ -62,6 +62,6 @@ private:
     // Helper methods
     void ParseLine(const std::string& line, int rowIndex);
     COLORREF GetColorRef(TeletextColor color);
-    void DrawCell(HDC hdc, int row, int col, int cellWidth, int cellHeight, bool hasFont2, bool hasFont4);
+    void DrawCell(HDC hdc, int row, int col, int cellWidth, int cellHeight, int displayRow, bool hasFont2, bool hasFont4, bool allowDoubleHeight);
     wchar_t GetGraphicsChar(uint8_t code, bool separated);
 };

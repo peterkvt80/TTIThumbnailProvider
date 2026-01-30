@@ -241,6 +241,9 @@ When encountered, these codes:
   - Each character is rendered at 2× size using the teletext4.ttf font
   - The top half sits in the current row, bottom half extends into the row below
   - Characters are not split - a single glyph spans two rows
+  - **Background colors**: The background color continues unbroken into the row below, filling the entire cell area
+  - **Important**: If a row contains any double height characters, the next row is skipped during rendering (to prevent overwriting the bottom half)
+  - **Exceptions**: Rows 0, 23, and 24 do not extend into the next row, so double height is rendered as normal height on these rows
 
 ## Character Interpretation
 
@@ -253,13 +256,27 @@ After control codes are processed, characters are interpreted based on the curre
   - 0x7F → U+E65F (special teletext character in teletext2.ttf)
 
 ### Graphics Mode
-- Characters 0x20-0x7F are interpreted as 2×3 block graphics
+- Characters 0x20-0x3F are interpreted as 2×3 block graphics (patterns 0x00-0x1F)
+- Characters 0x40-0x5F display as alphanumeric characters (blast-through)
+- Characters 0x60-0x7F are interpreted as 2×3 block graphics (patterns 0x20-0x3F)
 - Each character represents a 2×3 grid of pixels
 - The 6 bits (bits 0-5) determine which pixels are lit
 
 ## Graphics Character Encoding
 
-Graphics characters use the lower 6 bits to encode a 2×3 pixel grid:
+Graphics characters use specific code ranges:
+
+**Character Code Ranges:**
+- **0x20-0x3F**: Graphics patterns using bits 0-4 (patterns 0x00-0x1F)
+- **0x40-0x5F**: Blast-through range - displays as alphanumeric characters
+- **0x60-0x7F**: Graphics patterns using bits 0-5 (patterns 0x20-0x3F)
+
+**Blast-through Effect:**
+Characters in the range 0x40-0x5F (@ through _) are not mapped to graphics. Instead, they display as their corresponding alphanumeric characters even when graphics mode is active. This allows mixing text with graphics without switching modes.
+
+**Bit Pattern Encoding:**
+
+Graphics characters use a 2×3 pixel grid:
 
 ```
 Bit:  5 4 3 2 1 0
@@ -273,9 +290,10 @@ Pos:  ┌─┬─┐
 ```
 
 For example:
-- 0x20 (all bits 0) = empty
-- 0x3F (all bits 1) = full block
-- 0x21 (bit 0 set) = top-right pixel only
+- 0x20 (bits 00000) = empty
+- 0x3F (bits 11111) = left column filled
+- 0x60 (bits 100000) = bottom-right pixel only  
+- 0x7F (bits 111111) = full block
 
 ## Notes for wxTED Users
 

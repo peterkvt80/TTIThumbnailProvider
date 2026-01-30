@@ -184,9 +184,30 @@ void TeletextPage::ParseLine(const std::string& line, int rowIndex)
 
 wchar_t TeletextPage::GetGraphicsChar(uint8_t code, bool separated)
 {
-    // Graphics characters are in range 0x20-0x7F
-    // The lower 6 bits encode the 2x3 block pattern
-    uint8_t pattern = code & 0x3F;
+    // Graphics characters mapping:
+    // 0x20-0x3F → patterns 0x00-0x1F (using bits 0-4)
+    // 0x40-0x5F → blast through (show as alphanumeric characters, not graphics)
+    // 0x60-0x7F → patterns 0x20-0x3F (using bits 0-5 with bit 5 set)
+    
+    // Check for blast-through range
+    if (code >= 0x40 && code <= 0x5F)
+    {
+        // Blast through - return the character as-is to display alphanumerically
+        return (wchar_t)code;
+    }
+    
+    // Determine pattern based on range
+    uint8_t pattern;
+    if (code >= 0x20 && code <= 0x3F)
+    {
+        // Lower range: pattern is bits 0-4 (0x00-0x1F)
+        pattern = code & 0x1F;
+    }
+    else // code >= 0x60 && code <= 0x7F
+    {
+        // Upper range: pattern is bits 0-5 (0x20-0x3F)
+        pattern = code & 0x3F;
+    }
     
     // Map to Unicode private use area glyphs in teletext2.ttf
     // Contiguous: U+E680-U+E69F (patterns 0x00-0x1F), U+E6C0-U+E6DF (patterns 0x20-0x3F)
@@ -246,9 +267,12 @@ HBITMAP TeletextPage::RenderToBitmap(UINT width, UINT height)
     HBITMAP hBitmap = CreateCompatibleBitmap(hdcScreen, width, height);
     HBITMAP hOldBitmap = (HBITMAP)SelectObject(hdcMem, hBitmap);
     
-    // Calculate cell dimensions
+    // Exclude row 0 from rendering - only render rows 1-24
+    const int RENDER_ROWS = SCREEN_ROWS - 1;  // 24 rows instead of 25
+    
+    // Calculate cell dimensions based on 24 rows
     int cellWidth = width / SCREEN_COLS;
-    int cellHeight = height / SCREEN_ROWS;
+    int cellHeight = height / RENDER_ROWS;
     
     // Try to load teletext fonts from the same directory as the DLL
     wchar_t fontPath[MAX_PATH];
@@ -292,12 +316,49 @@ HBITMAP TeletextPage::RenderToBitmap(UINT width, UINT height)
     
     SetBkMode(hdcMem, OPAQUE);
     
-    // Render each cell
+    // First pass: determine which rows have double height
+    bool rowHasDoubleHeight[SCREEN_ROWS] = {false};
     for (int row = 0; row < SCREEN_ROWS; row++)
     {
         for (int col = 0; col < SCREEN_COLS; col++)
         {
-            DrawCell(hdcMem, row, col, cellWidth, cellHeight, font2Added, font4Added);
+            if (m_cells[row][col].doubleHeight)
+            {
+                rowHasDoubleHeight[row] = true;
+                break;
+            }
+        }
+    }
+    
+    // Render each cell, starting from row 1 (skip row 0), only render up to row 23
+    for (int row = 1; row <= 23; row++)
+    {
+        // Calculate the display row (0-22 for rows 1-23)
+        int displayRow = row - 1;
+        
+        // Check if the previous row has double height - if so, skip this row entirely
+        bool previousRowHasDoubleHeight = false;
+        if (row > 1 && rowHasDoubleHeight[row - 1])
+        {
+            // Rows 23 and 24 don't extend down
+            if (row - 1 != 23 && row - 1 != 24)
+            {
+                previousRowHasDoubleHeight = true;
+            }
+        }
+        
+        // Skip this row if previous row had double height (it's already been rendered)
+        if (previousRowHasDoubleHeight)
+        {
+            continue;
+        }
+        
+        // Normal rendering for this row
+        for (int col = 0; col < SCREEN_COLS; col++)
+        {
+            // Don't allow double height on rows 23, 24 (they don't extend down)
+            bool allowDoubleHeight = (row != 23 && row != 24);
+            DrawCell(hdcMem, row, col, cellWidth, cellHeight, displayRow, font2Added, font4Added, allowDoubleHeight);
         }
     }
     
@@ -339,20 +400,34 @@ HBITMAP TeletextPage::RenderToBitmap(UINT width, UINT height)
     return hBitmap;
 }
 
-void TeletextPage::DrawCell(HDC hdc, int row, int col, int cellWidth, int cellHeight, bool hasFont2, bool hasFont4)
+void TeletextPage::DrawCell(HDC hdc, int row, int col, int cellWidth, int cellHeight, int displayRow, bool hasFont2, bool hasFont4, bool allowDoubleHeight)
 {
     TeletextCell& cell = m_cells[row][col];
     
     RECT rect;
     rect.left = col * cellWidth;
-    rect.top = row * cellHeight;
+    rect.top = displayRow * cellHeight;
     rect.right = rect.left + cellWidth;
     rect.bottom = rect.top + cellHeight;
     
-    // Fill background
-    HBRUSH hBrush = CreateSolidBrush(GetColorRef(cell.background));
-    FillRect(hdc, &rect, hBrush);
-    DeleteObject(hBrush);
+    // Fill background for this cell
+    // If double height, extend background to cover next row too
+    if (cell.doubleHeight && allowDoubleHeight)
+    {
+        // Extend background to cover both rows
+        RECT bgRect = rect;
+        bgRect.bottom = rect.top + (cellHeight * 2);
+        HBRUSH hBrush = CreateSolidBrush(GetColorRef(cell.background));
+        FillRect(hdc, &bgRect, hBrush);
+        DeleteObject(hBrush);
+    }
+    else
+    {
+        // Normal height background
+        HBRUSH hBrush = CreateSolidBrush(GetColorRef(cell.background));
+        FillRect(hdc, &rect, hBrush);
+        DeleteObject(hBrush);
+    }
     
     // Draw character if not space
     if (cell.character != L' ')
@@ -363,8 +438,8 @@ void TeletextPage::DrawCell(HDC hdc, int row, int col, int cellWidth, int cellHe
         
         RECT textRect = rect;
         
-        // Determine font and size based on double height
-        if (cell.doubleHeight)
+        // Determine font and size based on double height (only if allowed for this row)
+        if (cell.doubleHeight && allowDoubleHeight)
         {
             fontSize = cellHeight * 2;  // Double the font size
             fontName = hasFont4 ? L"Teletext4" : L"Courier New";

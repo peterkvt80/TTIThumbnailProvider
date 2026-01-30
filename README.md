@@ -30,8 +30,13 @@ This thumbnail provider reads TTI (Teletext) files and renders the first page as
 The renderer can use teletext fonts for accurate display:
 
 **teletext2.ttf** - Normal height characters and graphics
-- Contiguous graphics: U+E680 to U+E69F (patterns 0x00-0x1F), U+E6C0 to U+E6DF (patterns 0x20-0x3F)
-- Separated graphics: U+E6A0 to U+E6BF (patterns 0x00-0x1F), U+E6E0 to U+E6FF (patterns 0x20-0x3F)
+- **Contiguous graphics** (solid blocks): 
+  - Characters 0x20-0x3F → U+E680-E69F
+  - Characters 0x60-0x7F → U+E6C0-E6DF
+- **Separated graphics** (blocks with gaps): 
+  - Characters 0x20-0x3F → U+E6A0-E6BF
+  - Characters 0x60-0x7F → U+E6E0-E6FF
+- **Blast-through range**: Characters 0x40-0x5F display as alphanumeric characters (not graphics)
 
 **teletext4.ttf** - Double height characters
 - Contains the same glyphs as teletext2.ttf but designed for double height rendering
@@ -190,8 +195,14 @@ The thumbnail provider implements these COM interfaces:
 
 ### Graphics Character Encoding
 
-Graphics characters use the lower 6 bits to encode a 2×3 pixel grid:
+Graphics characters use specific code ranges to encode a 2×3 pixel grid:
 
+**Code Ranges:**
+- **0x20-0x3F**: Graphics patterns 0x00-0x1F (uses bits 0-4)
+- **0x40-0x5F**: Blast-through range (displays as alphanumeric characters, not graphics)
+- **0x60-0x7F**: Graphics patterns 0x20-0x3F (uses bits 0-5)
+
+**Bit Pattern (2×3 grid):**
 ```
 Bit:  5 4 3 2 1 0
 Pos:  ┌─┬─┐
@@ -204,16 +215,19 @@ Pos:  ┌─┬─┐
 ```
 
 For example:
-- 0x20 (bits 000000) = empty/space
-- 0x3F (bits 111111) = full block
-- 0x21 (bits 000001) = top-right pixel only
-- 0x2A (bits 001010) = top-right and middle-right
-- 0x38 (bits 011000) = middle row filled
+- 0x20 (bits 00000) = empty/space
+- 0x3F (bits 11111) = left column + top-right
+- 0x60 (bits 100000) = bottom-right only
+- 0x7F (bits 111111) = full block
 
 The renderer maps these patterns to Unicode glyphs in teletext2.ttf:
-- **Contiguous graphics** (solid blocks): Characters 0x20-0x5F → U+E680-E69F and U+E6C0-E6DF
-- **Separated graphics** (blocks with gaps): Characters 0x20-0x5F → U+E6A0-E6BF and U+E6E0-E6FF
-- **Characters 0x60-0x7F**: Additional graphics patterns mapped to upper ranges
+- **Contiguous graphics** (solid blocks): 
+  - Characters 0x20-0x3F → U+E680-E69F
+  - Characters 0x60-0x7F → U+E6C0-E6DF
+- **Separated graphics** (blocks with gaps): 
+  - Characters 0x20-0x3F → U+E6A0-E6BF
+  - Characters 0x60-0x7F → U+E6E0-E6FF
+- **Blast-through** (0x40-0x5F): Displays as regular alphanumeric characters
 
 ### Color Palette
 
