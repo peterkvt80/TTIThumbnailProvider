@@ -77,7 +77,7 @@ bool TeletextPage::ParseEP1(const std::vector<uint8_t>& data)
         // EP1 rows 0-23 map to teletext rows 1-24
         int teletextRow = row + 1;
         
-        // Parse character data with escape sequence handling
+        // Parse character data - NO escape sequence processing
         TeletextColor currentFg = WHITE;
         TeletextColor currentBg = BLACK;
         bool graphicsMode = false;
@@ -89,11 +89,10 @@ bool TeletextPage::ParseEP1(const std::vector<uint8_t>& data)
         {
             uint8_t ch = data[offset + i] & 0x7F; // Strip parity bit
             
-            // Check for ESC (0x1B) followed by encoded byte
-            if (ch == 0x1B && i + 1 < 40)
+            // Replace ESC (0x1B) with space (0x20)
+            if (ch == 0x1B)
             {
-                i++;
-                ch = data[offset + i] & 0x3F; // Mask with 0x3F as per validate function
+                ch = 0x20;
             }
             
             // Control codes

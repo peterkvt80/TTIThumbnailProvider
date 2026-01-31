@@ -42,30 +42,25 @@ Two null bytes: `0x00 0x00`
 
 ## Character Encoding
 
-EP1 files use **raw teletext encoding** with escape sequences:
+EP1 files use **raw teletext encoding** without escape sequences:
 
 ### 7-bit Encoding
 - All characters use 7-bit values (bit 7 is parity and should be stripped)
 - Character values are masked with `0x7F`
 
-### Escape Sequences
+### ESC Character Handling
 
-Control characters (0x00-0x1F) are encoded using escape sequences:
+**Important:** Unlike TTI format, EP1 files do NOT use escape sequences for control codes.
 
-**Format:** `ESC (0x1B) + encoded_byte`
-
-**Decoding:**
-1. When reading byte `0x1B`, read the next byte
-2. Mask the next byte with `0x3F` to get the control code
-3. Process the control code
+- Control codes (0x00-0x1F) are stored directly as raw bytes
+- If ESC (0x1B) appears in the data, it should be **replaced with a space (0x20)**
+- No escape sequence processing is performed
 
 **Example:**
 ```
-Byte sequence: 1B 41
-Step 1: Detect ESC (0x1B)
-Step 2: Read next byte (0x41)
-Step 3: Mask with 0x3F: 0x41 & 0x3F = 0x01
-Result: Control code 0x01 (Red alphanumeric)
+Byte: 0x1B
+Action: Replace with 0x20 (space)
+Result: Displays as a space character
 ```
 
 ## Control Codes
@@ -108,7 +103,8 @@ Same as TTI format:
 | Size | Variable | Fixed (968 bytes) |
 | Header row | Stored as OL,0 | Not stored |
 | Rows stored | Variable (0-24) | Fixed (1-24, 960 bytes) |
-| Control codes | ESC + (code + 0x40) | ESC + (byte & 0x3F) |
+| Control codes | ESC + (code + 0x40) | Raw bytes (0x00-0x1F) |
+| ESC handling | Escape sequence | Replaced with space (0x20) |
 | Line markers | Yes (OL,row,data) | No |
 | Human readable | Yes | No |
 
@@ -136,11 +132,10 @@ bool ParseEP1(const std::vector<uint8_t>& data)
         {
             uint8_t ch = data[offset++] & 0x7F; // Strip parity
             
-            // Check for escape sequence
-            if (ch == 0x1B && col + 1 < 40)
+            // Replace ESC with space
+            if (ch == 0x1B)
             {
-                col++;
-                ch = data[offset++] & 0x3F; // Decode control code
+                ch = 0x20; // Space
             }
             
             // Process character (control code or displayable)
@@ -176,16 +171,8 @@ void WriteEP1(const TeletextPage& page, const std::string& filename)
         {
             uint8_t ch = page.GetCharacter(row, col);
             
-            // If control code, write as escape sequence
-            if (ch < 0x20)
-            {
-                file.put(0x1B);           // ESC
-                file.put(ch | 0x40);      // Encode: code OR 0x40
-            }
-            else
-            {
-                file.put(ch & 0x7F);      // Regular character (7-bit)
-            }
+            // Write character directly (control codes as raw bytes)
+            file.put(ch & 0x7F);  // 7-bit character
         }
     }
     
@@ -194,6 +181,8 @@ void WriteEP1(const TeletextPage& page, const std::string& filename)
     file.put(0x00);
 }
 ```
+
+**Note:** Control codes (0x00-0x1F) are written directly as raw bytes, not as escape sequences.
 
 ## Format Validation
 
@@ -204,7 +193,8 @@ To verify an EP1 file:
 3. **Check footer**: Bytes 966-967 should be `00 00` (optional check)
 4. **Validate characters**: 
    - All characters should be 7-bit (check bit 7)
-   - ESC (0x1B) should be followed by a valid byte
+   - Control codes (0x00-0x1F) should be raw bytes
+   - ESC (0x1B) should be treated as a space (0x20)
 
 ## Common Issues
 
@@ -215,8 +205,9 @@ To verify an EP1 file:
 
 ### Character Encoding
 - Remember to strip bit 7 (parity bit) when reading
-- Escape sequences use `& 0x3F` not `- 0x40`
-- Control codes below 0x20 must be escaped
+- Control codes are raw bytes (0x00-0x1F), not escaped
+- ESC (0x1B) should be replaced with space (0x20)
+- No escape sequence processing needed
 
 ### Row Mapping
 - EP1 row 0 = Teletext row 1
@@ -237,11 +228,11 @@ Hex dump of a minimal EP1 file (first 100 bytes):
 ```
 Offset  00 01 02 03 04 05 06 07  08 09 0A 0B 0C 0D 0E 0F  ASCII
 ------  -----------------------  -----------------------  ----------------
-000000  FE 01 09 00 00 00 1B 47  54 65 73 74 20 50 61 67  .......GTest Pag
-000010  65 20 20 20 20 20 20 20  20 20 20 20 20 20 20 20  e               
-000020  20 20 20 20 20 20 20 20  20 20 20 20 20 1B 41 52                .AR
-000030  45 44 20 20 20 1B 42 47  52 45 45 4E 20 20 1B 43  ED   .BGREEN  .C
-000040  59 45 4C 4C 4F 57 20 1B  46 43 59 41 4E 20 20 20  YELLOW .FCYAN   
+000000  FE 01 09 00 00 00 07 54  65 73 74 20 50 61 67 65  .......Test Page
+000010  20 20 20 20 20 20 20 20  20 20 20 20 20 20 20 20                  
+000020  20 20 20 20 20 20 20 20  20 20 20 20 20 01 52 45                .RE
+000030  44 20 20 20 02 47 52 45  45 4E 20 20 03 59 45 4C  D   .GREEN  .YEL
+000040  4C 4F 57 20 06 43 59 41  4E 20 20 20 20 20 20 20  LOW .CYAN       
 000050  20 20 20 20 20 20 20 20  20 20 20 20 20 20 20 20                  
 000060  20 20 20 20                                        
 ```
@@ -249,8 +240,9 @@ Offset  00 01 02 03 04 05 06 07  08 09 0A 0B 0C 0D 0E 0F  ASCII
 This shows:
 - Header: `FE 01 09 00 00 00`
 - Row 0 data starting at offset 6
-- Control codes like `1B 47` (White), `1B 41` (Red)
+- Control codes as raw bytes: `07` (White), `01` (Red), `02` (Green), `03` (Yellow), `06` (Cyan)
 - Text content like "Test Page", "RED", "GREEN", etc.
+- **Note:** Control codes are stored as raw bytes (e.g., `01` for Red), NOT as escape sequences
 
 ## Advantages of EP1
 
