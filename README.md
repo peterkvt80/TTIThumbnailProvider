@@ -45,12 +45,30 @@ The renderer can use teletext fonts for accurate display:
 - Contains the same glyphs as teletext2.ttf but designed for double height rendering
 - Used when double height control code (0x0D) is active
 
-To use the fonts:
-1. Place `teletext2.ttf` and `teletext4.ttf` in the same directory as `TTIThumbnailProvider.dll`
-2. The renderer will automatically load them when generating thumbnails
-3. If fonts are not found, the renderer falls back to Courier New (graphics and double height will not display correctly)
+**Font Loading (Multiple Locations):**
 
-**Note:** The fonts are loaded temporarily for each thumbnail generation and do not need to be installed system-wide.
+The renderer searches for fonts in this order:
+1. **DLL directory** (e.g., `C:\Program Files\wxTED\`) - checked first
+2. **Windows Fonts folder** (e.g., `C:\Windows\Fonts\`) - checked if not found in DLL directory
+
+This allows fonts to be:
+- Installed system-wide for use by other applications (via Windows Fonts folder)
+- OR kept private with the DLL (via DLL directory)
+- The renderer works with either location
+
+**Installation Options:**
+
+**Option 1 - System-Wide (Recommended for wxTED):**
+- Install fonts to `C:\Windows\Fonts\`
+- Fonts available to all applications
+- Used by wxTED editor and thumbnail provider
+
+**Option 2 - Private Installation:**
+- Place fonts in same directory as `TTIThumbnailProvider.dll`
+- Fonts only used by thumbnail provider
+- More portable, easier to uninstall
+
+**Note:** The fonts are loaded temporarily for each thumbnail generation and do not need to be "active" in the system for thumbnails to work.
 
 ## Building from Source
 
@@ -85,14 +103,20 @@ TTIThumbnailProvider/
 2. Copy the following files to a permanent location:
    - `TTIThumbnailProvider.dll`
    - `Install.bat`
-   - `teletext2.ttf` (optional but recommended for normal height graphics)
-   - `teletext4.ttf` (optional but recommended for double height rendering)
-   - **Important**: Do not delete these files after installation - Windows needs the DLL to generate thumbnails
+   - `teletext2.ttf` (optional - can be in DLL directory OR Windows Fonts folder)
+   - `teletext4.ttf` (optional - can be in DLL directory OR Windows Fonts folder)
+   - **Important**: Do not delete the DLL after installation - Windows needs it to generate thumbnails
 3. Right-click `Install.bat` and select "Run as administrator"
 4. The script will:
    - Register the thumbnail provider
    - Clear the thumbnail cache
    - Restart Windows Explorer
+
+**Font Installation:**
+- **Option A**: Copy `teletext2.ttf` and `teletext4.ttf` to the same directory as the DLL
+- **Option B**: Install fonts system-wide to `C:\Windows\Fonts\` (right-click font → Install)
+- **Option C**: Both (fonts in both locations work fine)
+- If fonts are missing from both locations, thumbnails will use Courier New (no graphics)
 
 ### Method 2: Manual Registration
 
@@ -126,8 +150,9 @@ The renderer supports the standard TTI (Teletext Intermediate) format with prope
    - ESC character (0x1B, byte value 27)
    - Followed by the control code + 0x40
    - Example: Control code 0x01 (Red) → bytes `1B 41` (ESC + 'A')
-3. **Header row**: Row 0 parser enforces 8 leading space positions
-4. **Only OL lines are encoded**: Control codes in OL (Output Line) commands use this encoding
+3. **Row format**: `OL,<row>,<40 characters>` where row is 0-24
+4. **Missing rows**: Rows not present in the file are treated as 40 spaces
+5. **Thumbnail rendering**: Only rows 1-23 are displayed (row 0 is header, row 24 is footer)
 
 **Note:** In text editors, ESC (0x1B) may display as `[`, `^[`, or not at all, but the actual byte in the file is always 0x1B.
 

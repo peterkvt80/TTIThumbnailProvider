@@ -23,26 +23,74 @@ bool TeletextPage::ParseTTI(const std::vector<uint8_t>& data)
     std::istringstream stream(content);
     std::string line;
     
-    int currentRow = 0;
     bool foundFirstPage = false;
     
-    while (std::getline(stream, line) && currentRow < SCREEN_ROWS)
+    while (std::getline(stream, line))
     {
         // Skip empty lines
         if (line.empty()) continue;
         
-        // TTI format: lines starting with OL (Output Line) or similar markers
+        // TTI format: lines starting with OL (Output Line) or FL (Fastext Line)
         // Format: OL,<row>,<data>
         if (line.find("OL,") == 0 || line.find("FL,") == 0)
         {
             foundFirstPage = true;
-            ParseLine(line, currentRow);
-            currentRow++;
+            
+            // Extract row number
+            size_t firstComma = line.find(',');
+            if (firstComma == std::string::npos) continue;
+            
+            size_t secondComma = line.find(',', firstComma + 1);
+            if (secondComma == std::string::npos) continue;
+            
+            std::string rowStr = line.substr(firstComma + 1, secondComma - firstComma - 1);
+            int rowNumber = std::atoi(rowStr.c_str());
+            
+            // Only process displayable rows 0-24
+            if (rowNumber >= 0 && rowNumber <= 24)
+            {
+                ParseLine(line, rowNumber);
+            }
         }
-        // Also handle PN (Page Number) to stop at first page
+        // Stop at next page
         else if (foundFirstPage && line.find("PN,") == 0)
         {
             break;
+        }
+    }
+    
+    // Fill any missing rows 1-23 with spaces (row 0 is skipped in rendering anyway)
+    // This preserves blank space between rows with text
+    for (int row = 1; row <= 23; row++)
+    {
+        // Check if this row is empty (default initialized)
+        bool isEmpty = true;
+        for (int col = 0; col < SCREEN_COLS; col++)
+        {
+            // Check if cell differs from default (space with white on black)
+            if (m_cells[row][col].character != L' ' ||
+                m_cells[row][col].foreground != WHITE ||
+                m_cells[row][col].background != BLACK)
+            {
+                isEmpty = false;
+                break;
+            }
+        }
+        
+        // If row is still default (was never parsed), ensure it has proper defaults
+        // This handles missing rows in the TTI file
+        if (isEmpty)
+        {
+            for (int col = 0; col < SCREEN_COLS; col++)
+            {
+                m_cells[row][col].character = L' ';
+                m_cells[row][col].foreground = WHITE;
+                m_cells[row][col].background = BLACK;
+                m_cells[row][col].graphics = false;
+                m_cells[row][col].separated = false;
+                m_cells[row][col].doubleHeight = false;
+                m_cells[row][col].held = false;
+            }
         }
     }
     
@@ -408,7 +456,7 @@ HBITMAP TeletextPage::RenderToBitmap(UINT width, UINT height)
     int cellWidth = width / SCREEN_COLS;
     int cellHeight = height / RENDER_ROWS;
     
-    // Try to load teletext fonts from the same directory as the DLL
+    // Try to load teletext fonts from multiple locations
     wchar_t fontPath[MAX_PATH];
     wchar_t dllPath[MAX_PATH];
     bool font2Added = false;
@@ -417,9 +465,10 @@ HBITMAP TeletextPage::RenderToBitmap(UINT width, UINT height)
     // External reference to DLL instance handle from DllMain.cpp
     extern HINSTANCE g_hInst;
     
+    // Try to load teletext2.ttf
+    // First try: DLL directory
     if (g_hInst && GetModuleFileNameW(g_hInst, dllPath, MAX_PATH))
     {
-        // Load teletext2.ttf (normal height)
         wcscpy_s(fontPath, MAX_PATH, dllPath);
         wchar_t* lastSlash = wcsrchr(fontPath, L'\\');
         if (lastSlash)
@@ -432,14 +481,50 @@ HBITMAP TeletextPage::RenderToBitmap(UINT width, UINT height)
                 font2Added = true;
             }
         }
-        
-        // Load teletext4.ttf (double height)
+    }
+    
+    // Second try: Windows Fonts folder
+    if (!font2Added)
+    {
+        wchar_t winDir[MAX_PATH];
+        if (GetWindowsDirectoryW(winDir, MAX_PATH))
+        {
+            wcscpy_s(fontPath, MAX_PATH, winDir);
+            wcscat_s(fontPath, MAX_PATH, L"\\Fonts\\teletext2.ttf");
+            
+            if (AddFontResourceExW(fontPath, FR_PRIVATE, 0) > 0)
+            {
+                font2Added = true;
+            }
+        }
+    }
+    
+    // Try to load teletext4.ttf
+    // First try: DLL directory
+    if (g_hInst && GetModuleFileNameW(g_hInst, dllPath, MAX_PATH))
+    {
         wcscpy_s(fontPath, MAX_PATH, dllPath);
-        lastSlash = wcsrchr(fontPath, L'\\');
+        wchar_t* lastSlash = wcsrchr(fontPath, L'\\');
         if (lastSlash)
         {
             *(lastSlash + 1) = L'\0';
             wcscat_s(fontPath, MAX_PATH, L"teletext4.ttf");
+            
+            if (AddFontResourceExW(fontPath, FR_PRIVATE, 0) > 0)
+            {
+                font4Added = true;
+            }
+        }
+    }
+    
+    // Second try: Windows Fonts folder
+    if (!font4Added)
+    {
+        wchar_t winDir[MAX_PATH];
+        if (GetWindowsDirectoryW(winDir, MAX_PATH))
+        {
+            wcscpy_s(fontPath, MAX_PATH, winDir);
+            wcscat_s(fontPath, MAX_PATH, L"\\Fonts\\teletext4.ttf");
             
             if (AddFontResourceExW(fontPath, FR_PRIVATE, 0) > 0)
             {
@@ -503,6 +588,7 @@ HBITMAP TeletextPage::RenderToBitmap(UINT width, UINT height)
         {
             if (font2Added)
             {
+                // Try DLL directory first
                 wcscpy_s(fontPath, MAX_PATH, dllPath);
                 wchar_t* lastSlash = wcsrchr(fontPath, L'\\');
                 if (lastSlash)
@@ -511,16 +597,35 @@ HBITMAP TeletextPage::RenderToBitmap(UINT width, UINT height)
                     wcscat_s(fontPath, MAX_PATH, L"teletext2.ttf");
                     RemoveFontResourceExW(fontPath, FR_PRIVATE, 0);
                 }
+                
+                // Also try Windows Fonts folder
+                wchar_t winDir[MAX_PATH];
+                if (GetWindowsDirectoryW(winDir, MAX_PATH))
+                {
+                    wcscpy_s(fontPath, MAX_PATH, winDir);
+                    wcscat_s(fontPath, MAX_PATH, L"\\Fonts\\teletext2.ttf");
+                    RemoveFontResourceExW(fontPath, FR_PRIVATE, 0);
+                }
             }
             
             if (font4Added)
             {
+                // Try DLL directory first
                 wcscpy_s(fontPath, MAX_PATH, dllPath);
                 wchar_t* lastSlash = wcsrchr(fontPath, L'\\');
                 if (lastSlash)
                 {
                     *(lastSlash + 1) = L'\0';
                     wcscat_s(fontPath, MAX_PATH, L"teletext4.ttf");
+                    RemoveFontResourceExW(fontPath, FR_PRIVATE, 0);
+                }
+                
+                // Also try Windows Fonts folder
+                wchar_t winDir[MAX_PATH];
+                if (GetWindowsDirectoryW(winDir, MAX_PATH))
+                {
+                    wcscpy_s(fontPath, MAX_PATH, winDir);
+                    wcscat_s(fontPath, MAX_PATH, L"\\Fonts\\teletext4.ttf");
                     RemoveFontResourceExW(fontPath, FR_PRIVATE, 0);
                 }
             }

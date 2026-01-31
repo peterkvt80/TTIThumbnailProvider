@@ -17,6 +17,35 @@ OL,<row>,<data>       # Output lines (rows 0-24)
 FL,<row>,<data>       # Fastext lines (optional)
 ```
 
+### Row Handling
+
+**Output Lines (OL):**
+- Format: `OL,<row>,<40 characters>`
+- Valid row numbers: 0-24
+- Only lines starting with `OL,` (or `FL,`) are displayable rows
+- Row numbers can appear in any order in the file
+- **Missing rows**: If a row number is not present in the file, it is treated as 40 spaces
+
+**Thumbnail Rendering:**
+- Only rows 1-23 are shown in thumbnails
+- Row 0 (header) is not displayed in thumbnails
+- Row 24 (footer) is not displayed in thumbnails
+- Missing rows appear as blank lines to preserve spacing
+
+**Example:**
+```
+OL,1,A Some text on row 1
+OL,5,B Some text on row 5
+OL,10,C Some text on row 10
+```
+This renders as:
+- Row 1: "Some text on row 1" (red)
+- Rows 2-4: Blank (40 spaces each)
+- Row 5: "Some text on row 5" (green)
+- Rows 6-9: Blank (40 spaces each)
+- Row 10: "Some text on row 10" (yellow)
+- Rows 11-23: Blank (40 spaces each)
+
 ### Header Row (Row 0)
 
 Row 0 is special - it contains the page header:
