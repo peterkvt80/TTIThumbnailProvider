@@ -15,6 +15,58 @@ TeletextPage::TeletextPage()
             m_cells[row][col] = TeletextCell();
         }
     }
+    
+    // Default to English national option
+    m_nationalOption = 0;
+    
+    // Initialize national character maps
+    InitializeNationalMaps();
+}
+
+void TeletextPage::InitializeNationalMaps()
+{
+    // English mapping (used as default for all languages initially)
+    std::map<uint8_t, wchar_t> englishMap;
+    englishMap[0x23] = 0x00A3;  // £ (pound sign)
+    englishMap[0x24] = 0x0024;  // $ (dollar)
+    englishMap[0x26] = 0x0026; // &
+    englishMap[0x40] = 0x0040;  // @ (at sign)
+    englishMap[0x5B] = 0x2190;  // ← (left arrow)
+    englishMap[0x5C] = 0x00BD;  // ½ (one half)
+    englishMap[0x5D] = 0x2192;  // → (right arrow)
+    englishMap[0x5E] = 0x2191;  // ↑ (up arrow)
+    englishMap[0x5F] = 0x0023;  // # (hash/number sign)
+    englishMap[0x60] = 0x2014;  // — (em dash)
+    englishMap[0x7B] = 0x00BC;  // ¼ (one quarter)
+    englishMap[0x7C] = 0x2016;  // ‖ (double vertical line)
+    englishMap[0x7D] = 0x00BE;  // ¾ (three quarters)
+    englishMap[0x7E] = 0x00F7;  // ÷ (division sign)
+    englishMap[0x7F] = 0xE65F;  // █ (block - special teletext character)
+    
+    // Initialize all 13 national option tables with English mapping
+    // 0=English, 1=German, 2=Swedish/Finnish, 3=Italian, 4=French,
+    // 5=Portuguese/Spanish, 6=Czech/Slovak, 7=Romanian, 8=Serbian/Croatian/Slovenian,
+    // 9=Estonian, 10=Lettish/Lithuanian, 11=Polish, 12=Turkish
+    for (int i = 0; i < 13; i++)
+    {
+        m_nationalMaps[i] = englishMap;
+    }
+    
+    // TODO: Update individual national option tables with their specific mappings
+    // For now, all use English mapping
+}
+
+wchar_t TeletextPage::ApplyNationalCharMap(uint8_t ch)
+{
+    // Check if this character has a national mapping
+    auto it = m_nationalMaps[m_nationalOption].find(ch);
+    if (it != m_nationalMaps[m_nationalOption].end())
+    {
+        return it->second;
+    }
+    
+    // No mapping found, return character as-is
+    return (wchar_t)ch;
 }
 
 bool TeletextPage::ParseTTI(const std::vector<uint8_t>& data)
@@ -206,20 +258,8 @@ bool TeletextPage::ParseEP1(const std::vector<uint8_t>& data)
                 }
                 else
                 {
-                    // Alphanumeric mode - handle special character mappings
-                    if (ch == 0x7E)  // '~' (tilde)
-                    {
-                        m_cells[teletextRow][colIndex].character = 0x00F7;  // Division sign
-                    }
-                    else if (ch == 0x7F)
-                    {
-                        m_cells[teletextRow][colIndex].character = 0xE65F;  // Special teletext character
-                    }
-                    else
-                    {
-                        // Regular character
-                        m_cells[teletextRow][colIndex].character = (wchar_t)ch;
-                    }
+                    // Alphanumeric mode - apply national character mapping
+                    m_cells[teletextRow][colIndex].character = ApplyNationalCharMap(ch);
                 }
                 colIndex++;
             }
@@ -344,20 +384,8 @@ void TeletextPage::ParseLine(const std::string& line, int rowIndex)
             }
             else
             {
-                // Alphanumeric mode - handle special character mappings
-                if (ch == 0x7E)  // '~' (tilde)
-                {
-                    m_cells[rowIndex][colIndex].character = 0x00F7;  // Division sign
-                }
-                else if (ch == 0x7F)
-                {
-                    m_cells[rowIndex][colIndex].character = 0xE65F;  // Special teletext character
-                }
-                else
-                {
-                    // Regular character
-                    m_cells[rowIndex][colIndex].character = (wchar_t)ch;
-                }
+                // Alphanumeric mode - apply national character mapping
+                m_cells[rowIndex][colIndex].character = ApplyNationalCharMap(ch);
             }
             colIndex++;
         }

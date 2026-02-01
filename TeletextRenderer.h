@@ -3,6 +3,7 @@
 #include <windows.h>
 #include <vector>
 #include <string>
+#include <map>
 
 // Teletext character cell dimensions
 const int CHAR_WIDTH = 12;
@@ -62,9 +63,21 @@ public:
 private:
     TeletextCell m_cells[SCREEN_ROWS][SCREEN_COLS];
     
+    // National character option (0-12)
+    // 0=English, 1=German, 2=Swedish/Finnish, 3=Italian, 4=French,
+    // 5=Portuguese/Spanish, 6=Czech/Slovak, 7=Romanian, 8=Serbian/Croatian/Slovenian,
+    // 9=Estonian, 10=Lettish/Lithuanian, 11=Polish, 12=Turkish
+    int m_nationalOption;
+    
+    // National character mapping tables (character code -> Unicode)
+    // All tables initialized with English mapping, can be updated for other languages
+    std::map<uint8_t, wchar_t> m_nationalMaps[13];
+    
     // Helper methods
+    void InitializeNationalMaps();
     void ParseLine(const std::string& line, int rowIndex);
     COLORREF GetColorRef(TeletextColor color);
     void DrawCell(HDC hdc, int row, int col, int cellWidth, int cellHeight, int displayRow, bool hasFont2, bool hasFont4, bool allowDoubleHeight);
     wchar_t GetGraphicsChar(uint8_t code, bool separated);
+    wchar_t ApplyNationalCharMap(uint8_t ch);
 };
