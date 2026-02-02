@@ -1,6 +1,7 @@
 #include "TeletextRenderer.h"
 #include <sstream>
 #include <algorithm>
+#include <cstdio>
 
 // External reference to DLL instance handle from DllMain.cpp
 extern HINSTANCE g_hInst;
@@ -25,11 +26,10 @@ TeletextPage::TeletextPage()
 
 void TeletextPage::InitializeNationalMaps()
 {
-    // English mapping (used as default for all languages initially)
+    // Base English mapping
     std::map<uint8_t, wchar_t> englishMap;
     englishMap[0x23] = 0x00A3;  // £ (pound sign)
     englishMap[0x24] = 0x0024;  // $ (dollar)
-    englishMap[0x26] = 0x0026; // &
     englishMap[0x40] = 0x0040;  // @ (at sign)
     englishMap[0x5B] = 0x2190;  // ← (left arrow)
     englishMap[0x5C] = 0x00BD;  // ½ (one half)
@@ -43,17 +43,107 @@ void TeletextPage::InitializeNationalMaps()
     englishMap[0x7E] = 0x00F7;  // ÷ (division sign)
     englishMap[0x7F] = 0xE65F;  // █ (block - special teletext character)
     
-    // Initialize all 13 national option tables with English mapping
-    // 0=English, 1=German, 2=Swedish/Finnish, 3=Italian, 4=French,
-    // 5=Portuguese/Spanish, 6=Czech/Slovak, 7=Romanian, 8=Serbian/Croatian/Slovenian,
-    // 9=Estonian, 10=Lettish/Lithuanian, 11=Polish, 12=Turkish
+    // Initialize all tables with English as base
     for (int i = 0; i < 13; i++)
     {
         m_nationalMaps[i] = englishMap;
     }
     
-    // TODO: Update individual national option tables with their specific mappings
-    // For now, all use English mapping
+    // 0 = English (already set above)
+    
+    // 1 = German
+    m_nationalMaps[1][0x23] = 0x0023;  // #
+    m_nationalMaps[1][0x24] = 0x0024;  // $
+    m_nationalMaps[1][0x40] = 0x00A7;  // § (section sign)
+    m_nationalMaps[1][0x5B] = 0x00C4;  // Ä
+    m_nationalMaps[1][0x5C] = 0x00D6;  // Ö
+    m_nationalMaps[1][0x5D] = 0x00DC;  // Ü
+    m_nationalMaps[1][0x5E] = 0x005E;  // ^
+    m_nationalMaps[1][0x5F] = 0x005F;  // _
+    m_nationalMaps[1][0x60] = 0x00B0;  // ° (degree)
+    m_nationalMaps[1][0x7B] = 0x00E4;  // ä
+    m_nationalMaps[1][0x7C] = 0x00F6;  // ö
+    m_nationalMaps[1][0x7D] = 0x00FC;  // ü
+    m_nationalMaps[1][0x7E] = 0x00DF;  // ß (eszett)
+    
+    // 2 = Swedish/Finnish
+    m_nationalMaps[2][0x23] = 0x0023;  // #
+    m_nationalMaps[2][0x24] = 0x00A4;  // ¤ (currency sign)
+    m_nationalMaps[2][0x40] = 0x00C9;  // É
+    m_nationalMaps[2][0x5B] = 0x00C4;  // Ä
+    m_nationalMaps[2][0x5C] = 0x00D6;  // Ö
+    m_nationalMaps[2][0x5D] = 0x00C5;  // Å
+    m_nationalMaps[2][0x5E] = 0x00DC;  // Ü
+    m_nationalMaps[2][0x5F] = 0x005F;  // _
+    m_nationalMaps[2][0x60] = 0x00E9;  // é
+    m_nationalMaps[2][0x7B] = 0x00E4;  // ä
+    m_nationalMaps[2][0x7C] = 0x00F6;  // ö
+    m_nationalMaps[2][0x7D] = 0x00E5;  // å
+    m_nationalMaps[2][0x7E] = 0x00FC;  // ü
+    
+    // 3 = Italian
+    m_nationalMaps[3][0x23] = 0x00A3;  // £
+    m_nationalMaps[3][0x24] = 0x0024;  // $
+    m_nationalMaps[3][0x40] = 0x00E9;  // é
+    m_nationalMaps[3][0x5B] = 0x00B0;  // °
+    m_nationalMaps[3][0x5C] = 0x00E7;  // ç
+    m_nationalMaps[3][0x5D] = 0x2192;  // →
+    m_nationalMaps[3][0x5E] = 0x2191;  // ↑
+    m_nationalMaps[3][0x5F] = 0x0023;  // #
+    m_nationalMaps[3][0x60] = 0x00F9;  // ù
+    m_nationalMaps[3][0x7B] = 0x00E0;  // à
+    m_nationalMaps[3][0x7C] = 0x00F2;  // ò
+    m_nationalMaps[3][0x7D] = 0x00E8;  // è
+    m_nationalMaps[3][0x7E] = 0x00EC;  // ì
+    
+    // 4 = French
+    m_nationalMaps[4][0x23] = 0x00E9;  // é
+    m_nationalMaps[4][0x24] = 0x00EF;  // ï
+    m_nationalMaps[4][0x40] = 0x00E0;  // à
+    m_nationalMaps[4][0x5B] = 0x00EB;  // ë
+    m_nationalMaps[4][0x5C] = 0x00EA;  // ê
+    m_nationalMaps[4][0x5D] = 0x00F9;  // ù
+    m_nationalMaps[4][0x5E] = 0x00EE;  // î
+    m_nationalMaps[4][0x5F] = 0x0023;  // #
+    m_nationalMaps[4][0x60] = 0x00E8;  // è
+    m_nationalMaps[4][0x7B] = 0x00E2;  // â
+    m_nationalMaps[4][0x7C] = 0x00F4;  // ô
+    m_nationalMaps[4][0x7D] = 0x00FB;  // û
+    m_nationalMaps[4][0x7E] = 0x00E7;  // ç
+    
+    // 5 = Portuguese/Spanish
+    m_nationalMaps[5][0x23] = 0x00E7;  // ç
+    m_nationalMaps[5][0x24] = 0x0024;  // $
+    m_nationalMaps[5][0x40] = 0x00A1;  // ¡
+    m_nationalMaps[5][0x5B] = 0x00E1;  // á
+    m_nationalMaps[5][0x5C] = 0x00E9;  // é
+    m_nationalMaps[5][0x5D] = 0x00ED;  // í
+    m_nationalMaps[5][0x5E] = 0x00F3;  // ó
+    m_nationalMaps[5][0x5F] = 0x00FA;  // ú
+    m_nationalMaps[5][0x60] = 0x00BF;  // ¿
+    m_nationalMaps[5][0x7B] = 0x00FC;  // ü
+    m_nationalMaps[5][0x7C] = 0x00F1;  // ñ
+    m_nationalMaps[5][0x7D] = 0x00E8;  // è
+    m_nationalMaps[5][0x7E] = 0x00E0;  // à
+    
+    // 6 = Czech/Slovak
+    m_nationalMaps[6][0x23] = 0x0023;  // #
+    m_nationalMaps[6][0x24] = 0x016F;  // ů
+    m_nationalMaps[6][0x40] = 0x010D;  // č
+    m_nationalMaps[6][0x5B] = 0x0159;  // ř
+    m_nationalMaps[6][0x5C] = 0x00E9;  // é
+    m_nationalMaps[6][0x5D] = 0x00E1;  // á
+    m_nationalMaps[6][0x5E] = 0x011B;  // ě
+    m_nationalMaps[6][0x5F] = 0x00ED;  // í
+    m_nationalMaps[6][0x60] = 0x00FD;  // ý
+    m_nationalMaps[6][0x7B] = 0x00FA;  // ú
+    m_nationalMaps[6][0x7C] = 0x0161;  // š
+    m_nationalMaps[6][0x7D] = 0x017E;  // ž
+    m_nationalMaps[6][0x7E] = 0x00F3;  // ó
+    
+    // 7-12 remain with English base for now
+    // TODO: Add Romanian, Serbian/Croatian/Slovenian, Estonian, 
+    //       Lettish/Lithuanian, Polish, Turkish mappings
 }
 
 wchar_t TeletextPage::ApplyNationalCharMap(uint8_t ch)
@@ -81,6 +171,37 @@ bool TeletextPage::ParseTTI(const std::vector<uint8_t>& data)
     {
         // Skip empty lines
         if (line.empty()) continue;
+        
+        // Check for PS (Page Status) command to extract language
+        if (line.find("PS,") == 0)
+        {
+            // Parse PS command: PS,<hex_value>
+            size_t comma = line.find(',');
+            if (comma != std::string::npos)
+            {
+                std::string psValue = line.substr(comma + 1);
+                // Convert hex string to integer
+                unsigned int ps = 0;
+                if (sscanf(psValue.c_str(), "%x", &ps) == 1)
+                {
+                    // Extract language bits (bits 7-9, mask 0x0380)
+                    unsigned int langBits = ps & 0x0380;
+                    
+                    // Map to national option index
+                    switch (langBits)
+                    {
+                        case 0x0000: m_nationalOption = 0; break; // English
+                        case 0x0080: m_nationalOption = 4; break; // French
+                        case 0x0100: m_nationalOption = 2; break; // Swedish/Finnish
+                        case 0x0180: m_nationalOption = 6; break; // Czech/Slovak
+                        case 0x0200: m_nationalOption = 1; break; // German
+                        case 0x0280: m_nationalOption = 5; break; // Portuguese/Spanish
+                        case 0x0300: m_nationalOption = 3; break; // Italian
+                        default: m_nationalOption = 0; break;     // Default to English
+                    }
+                }
+            }
+        }
         
         // TTI format: lines starting with OL (Output Line) or FL (Fastext Line)
         // Format: OL,<row>,<data>
@@ -716,7 +837,7 @@ void TeletextPage::DrawCell(HDC hdc, int row, int col, int cellWidth, int cellHe
         }
         else
         {
-            // Normal height: use teletext2 if available
+            // Normal height: use teletext2 if available, Courier New as fallback
             fontName = hasFont2 ? L"Teletext2" : L"Courier New";
         }
         
@@ -732,7 +853,8 @@ void TeletextPage::DrawCell(HDC hdc, int row, int col, int cellWidth, int cellHe
         SetBkColor(hdc, GetColorRef(cell.background));
         
         wchar_t str[2] = { cell.character, 0 };
-        DrawTextW(hdc, str, 1, &textRect, DT_CENTER | DT_VCENTER | DT_SINGLELINE | DT_NOCLIP);
+        // Use DT_LEFT instead of DT_CENTER to avoid potential rendering issues
+        DrawTextW(hdc, str, 1, &textRect, DT_LEFT | DT_TOP | DT_SINGLELINE | DT_NOCLIP);
         
         SelectObject(hdc, hOldFont);
         DeleteObject(hFont);
