@@ -26,124 +26,180 @@ TeletextPage::TeletextPage()
 
 void TeletextPage::InitializeNationalMaps()
 {
-    // Base English mapping
-    std::map<uint8_t, wchar_t> englishMap;
-    englishMap[0x23] = 0x00A3;  // £ (pound sign)
-    englishMap[0x24] = 0x0024;  // $ (dollar)
-    englishMap[0x40] = 0x0040;  // @ (at sign)
-    englishMap[0x5B] = 0x2190;  // ← (left arrow)
-    englishMap[0x5C] = 0x00BD;  // ½ (one half)
-    englishMap[0x5D] = 0x2192;  // → (right arrow)
-    englishMap[0x5E] = 0x2191;  // ↑ (up arrow)
-    englishMap[0x5F] = 0x0023;  // # (hash/number sign)
-    englishMap[0x60] = 0x2014;  // — (em dash)
-    englishMap[0x7B] = 0x00BC;  // ¼ (one quarter)
-    englishMap[0x7C] = 0x2016;  // ‖ (double vertical line)
-    englishMap[0x7D] = 0x00BE;  // ¾ (three quarters)
-    englishMap[0x7E] = 0x00F7;  // ÷ (division sign)
-    englishMap[0x7F] = 0xE65F;  // █ (block - special teletext character)
-    
-    // Initialize all tables with English as base
+    // Initialize all tables to empty first
     for (int i = 0; i < 13; i++)
     {
-        m_nationalMaps[i] = englishMap;
+        m_nationalMaps[i].clear();
     }
     
-    // 0 = English (already set above)
+    // 0 = English (National option 0)
+    m_nationalMaps[0]['#'] = 0x00A3;  // £ pound sign
+    m_nationalMaps[0]['['] = 0x2190;  // ← left arrow
+    m_nationalMaps[0]['\\'] = 0x00BD; // ½ half
+    m_nationalMaps[0][']'] = 0x2192;  // → right arrow
+    m_nationalMaps[0]['^'] = 0x2191;  // ↑ up arrow
+    m_nationalMaps[0]['_'] = 0x0023;  // # hash sign
+    m_nationalMaps[0]['`'] = 0x2014;  // — em dash
+    m_nationalMaps[0]['{'] = 0x00BC;  // ¼ quarter
+    m_nationalMaps[0]['|'] = 0x2016;  // ‖ double pipe
+    m_nationalMaps[0]['}'] = 0x00BE;  // ¾ three quarters
+    m_nationalMaps[0]['~'] = 0x00F7;  // ÷ divide
     
-    // 1 = German
-    m_nationalMaps[1][0x23] = 0x0023;  // #
-    m_nationalMaps[1][0x24] = 0x0024;  // $
-    m_nationalMaps[1][0x40] = 0x00A7;  // § (section sign)
-    m_nationalMaps[1][0x5B] = 0x00C4;  // Ä
-    m_nationalMaps[1][0x5C] = 0x00D6;  // Ö
-    m_nationalMaps[1][0x5D] = 0x00DC;  // Ü
-    m_nationalMaps[1][0x5E] = 0x005E;  // ^
-    m_nationalMaps[1][0x5F] = 0x005F;  // _
-    m_nationalMaps[1][0x60] = 0x00B0;  // ° (degree)
-    m_nationalMaps[1][0x7B] = 0x00E4;  // ä
-    m_nationalMaps[1][0x7C] = 0x00F6;  // ö
-    m_nationalMaps[1][0x7D] = 0x00FC;  // ü
-    m_nationalMaps[1][0x7E] = 0x00DF;  // ß (eszett)
+    // 1 = German (National option 4 in PS encoding)
+    m_nationalMaps[1]['#'] = 0x0023;  // # (not mapped in German, but wxTED shows £ -> #)
+    m_nationalMaps[1]['$'] = 0x0024;  // $ dollar sign (not mapped)
+    m_nationalMaps[1]['@'] = 0x00A7;  // § section sign
+    m_nationalMaps[1]['['] = 0x00C4;  // Ä
+    m_nationalMaps[1]['\\'] = 0x00D6; // Ö
+    m_nationalMaps[1][']'] = 0x00DC;  // Ü
+    m_nationalMaps[1]['^'] = 0x005E;  // ^ caret (not mapped)
+    m_nationalMaps[1]['_'] = 0x005F;  // _ underscore (not mapped)
+    m_nationalMaps[1]['`'] = 0x00B0;  // ° degree
+    m_nationalMaps[1]['{'] = 0x00E4;  // ä
+    m_nationalMaps[1]['|'] = 0x00F6;  // ö
+    m_nationalMaps[1]['}'] = 0x00FC;  // ü
+    m_nationalMaps[1]['~'] = 0x00DF;  // ß eszett
     
-    // 2 = Swedish/Finnish
-    m_nationalMaps[2][0x23] = 0x0023;  // #
-    m_nationalMaps[2][0x24] = 0x00A4;  // ¤ (currency sign)
-    m_nationalMaps[2][0x40] = 0x00C9;  // É
-    m_nationalMaps[2][0x5B] = 0x00C4;  // Ä
-    m_nationalMaps[2][0x5C] = 0x00D6;  // Ö
-    m_nationalMaps[2][0x5D] = 0x00C5;  // Å
-    m_nationalMaps[2][0x5E] = 0x00DC;  // Ü
-    m_nationalMaps[2][0x5F] = 0x005F;  // _
-    m_nationalMaps[2][0x60] = 0x00E9;  // é
-    m_nationalMaps[2][0x7B] = 0x00E4;  // ä
-    m_nationalMaps[2][0x7C] = 0x00F6;  // ö
-    m_nationalMaps[2][0x7D] = 0x00E5;  // å
-    m_nationalMaps[2][0x7E] = 0x00FC;  // ü
+    // 2 = Swedish/Finnish (National option 2 in PS encoding)
+    m_nationalMaps[2]['#'] = 0x0023;  // # (£ -> # in wxTED)
+    m_nationalMaps[2]['$'] = 0x00A4;  // ¤ currency sign
+    m_nationalMaps[2]['@'] = 0x00C9;  // É
+    m_nationalMaps[2]['['] = 0x00C4;  // Ä
+    m_nationalMaps[2]['\\'] = 0x00D6; // Ö
+    m_nationalMaps[2][']'] = 0x00C5;  // Å
+    m_nationalMaps[2]['^'] = 0x00DC;  // Ü
+    m_nationalMaps[2]['_'] = 0x005F;  // _ underscore (not mapped)
+    m_nationalMaps[2]['`'] = 0x00E9;  // é
+    m_nationalMaps[2]['{'] = 0x00E4;  // ä
+    m_nationalMaps[2]['|'] = 0x00F6;  // ö
+    m_nationalMaps[2]['}'] = 0x00E5;  // å
+    m_nationalMaps[2]['~'] = 0x00FC;  // ü
     
-    // 3 = Italian
-    m_nationalMaps[3][0x23] = 0x00A3;  // £
-    m_nationalMaps[3][0x24] = 0x0024;  // $
-    m_nationalMaps[3][0x40] = 0x00E9;  // é
-    m_nationalMaps[3][0x5B] = 0x00B0;  // °
-    m_nationalMaps[3][0x5C] = 0x00E7;  // ç
-    m_nationalMaps[3][0x5D] = 0x2192;  // →
-    m_nationalMaps[3][0x5E] = 0x2191;  // ↑
-    m_nationalMaps[3][0x5F] = 0x0023;  // #
-    m_nationalMaps[3][0x60] = 0x00F9;  // ù
-    m_nationalMaps[3][0x7B] = 0x00E0;  // à
-    m_nationalMaps[3][0x7C] = 0x00F2;  // ò
-    m_nationalMaps[3][0x7D] = 0x00E8;  // è
-    m_nationalMaps[3][0x7E] = 0x00EC;  // ì
+    // 3 = Italian (National option 6 in PS encoding)
+    m_nationalMaps[3]['#'] = 0x00A3;  // £ pound
+    m_nationalMaps[3]['$'] = 0x0024;  // $ (£ -> $ in wxTED)
+    m_nationalMaps[3]['@'] = 0x00E9;  // é
+    m_nationalMaps[3]['['] = 0x00B0;  // ° degree
+    m_nationalMaps[3]['\\'] = 0x00E7; // ç
+    m_nationalMaps[3][']'] = 0x2192;  // → right arrow
+    m_nationalMaps[3]['^'] = 0x2191;  // ↑ up arrow
+    m_nationalMaps[3]['_'] = 0x0023;  // #
+    m_nationalMaps[3]['`'] = 0x00F9;  // ù
+    m_nationalMaps[3]['{'] = 0x00E0;  // à
+    m_nationalMaps[3]['|'] = 0x00F2;  // ò
+    m_nationalMaps[3]['}'] = 0x00E8;  // è
+    m_nationalMaps[3]['~'] = 0x00EC;  // ì
     
-    // 4 = French
-    m_nationalMaps[4][0x23] = 0x00E9;  // é
-    m_nationalMaps[4][0x24] = 0x00EF;  // ï
-    m_nationalMaps[4][0x40] = 0x00E0;  // à
-    m_nationalMaps[4][0x5B] = 0x00EB;  // ë
-    m_nationalMaps[4][0x5C] = 0x00EA;  // ê
-    m_nationalMaps[4][0x5D] = 0x00F9;  // ù
-    m_nationalMaps[4][0x5E] = 0x00EE;  // î
-    m_nationalMaps[4][0x5F] = 0x0023;  // #
-    m_nationalMaps[4][0x60] = 0x00E8;  // è
-    m_nationalMaps[4][0x7B] = 0x00E2;  // â
-    m_nationalMaps[4][0x7C] = 0x00F4;  // ô
-    m_nationalMaps[4][0x7D] = 0x00FB;  // û
-    m_nationalMaps[4][0x7E] = 0x00E7;  // ç
+    // 4 = French (National option 1 in PS encoding)
+    m_nationalMaps[4]['#'] = 0x00E9;  // é
+    m_nationalMaps[4]['$'] = 0x00EF;  // ï
+    m_nationalMaps[4]['@'] = 0x00E0;  // à
+    m_nationalMaps[4]['['] = 0x00EB;  // ë
+    m_nationalMaps[4]['\\'] = 0x00EA; // ê
+    m_nationalMaps[4][']'] = 0x00F9;  // ù
+    m_nationalMaps[4]['^'] = 0x00EE;  // î
+    m_nationalMaps[4]['_'] = 0x0023;  // #
+    m_nationalMaps[4]['`'] = 0x00E8;  // è
+    m_nationalMaps[4]['{'] = 0x00E2;  // â
+    m_nationalMaps[4]['|'] = 0x00F4;  // ô
+    m_nationalMaps[4]['}'] = 0x00FB;  // û
+    m_nationalMaps[4]['~'] = 0x00E7;  // ç
     
-    // 5 = Portuguese/Spanish
-    m_nationalMaps[5][0x23] = 0x00E7;  // ç
-    m_nationalMaps[5][0x24] = 0x0024;  // $
-    m_nationalMaps[5][0x40] = 0x00A1;  // ¡
-    m_nationalMaps[5][0x5B] = 0x00E1;  // á
-    m_nationalMaps[5][0x5C] = 0x00E9;  // é
-    m_nationalMaps[5][0x5D] = 0x00ED;  // í
-    m_nationalMaps[5][0x5E] = 0x00F3;  // ó
-    m_nationalMaps[5][0x5F] = 0x00FA;  // ú
-    m_nationalMaps[5][0x60] = 0x00BF;  // ¿
-    m_nationalMaps[5][0x7B] = 0x00FC;  // ü
-    m_nationalMaps[5][0x7C] = 0x00F1;  // ñ
-    m_nationalMaps[5][0x7D] = 0x00E8;  // è
-    m_nationalMaps[5][0x7E] = 0x00E0;  // à
+    // 5 = Portuguese/Spanish (National option 5 in PS encoding)
+    m_nationalMaps[5]['#'] = 0x00E7;  // ç
+    m_nationalMaps[5]['$'] = 0x0024;  // $ (£ -> $ in wxTED)
+    m_nationalMaps[5]['@'] = 0x00A1;  // ¡
+    m_nationalMaps[5]['['] = 0x00E1;  // á
+    m_nationalMaps[5]['\\'] = 0x00E9; // é
+    m_nationalMaps[5][']'] = 0x00ED;  // í
+    m_nationalMaps[5]['^'] = 0x00F3;  // ó
+    m_nationalMaps[5]['_'] = 0x00FA;  // ú
+    m_nationalMaps[5]['`'] = 0x00BF;  // ¿
+    m_nationalMaps[5]['{'] = 0x00FC;  // ü
+    m_nationalMaps[5]['|'] = 0x00F1;  // ñ
+    m_nationalMaps[5]['}'] = 0x00E8;  // è
+    m_nationalMaps[5]['~'] = 0x00E0;  // à
     
-    // 6 = Czech/Slovak
-    m_nationalMaps[6][0x23] = 0x0023;  // #
-    m_nationalMaps[6][0x24] = 0x016F;  // ů
-    m_nationalMaps[6][0x40] = 0x010D;  // č
-    m_nationalMaps[6][0x5B] = 0x0159;  // ř
-    m_nationalMaps[6][0x5C] = 0x00E9;  // é
-    m_nationalMaps[6][0x5D] = 0x00E1;  // á
-    m_nationalMaps[6][0x5E] = 0x011B;  // ě
-    m_nationalMaps[6][0x5F] = 0x00ED;  // í
-    m_nationalMaps[6][0x60] = 0x00FD;  // ý
-    m_nationalMaps[6][0x7B] = 0x00FA;  // ú
-    m_nationalMaps[6][0x7C] = 0x0161;  // š
-    m_nationalMaps[6][0x7D] = 0x017E;  // ž
-    m_nationalMaps[6][0x7E] = 0x00F3;  // ó
+    // 6 = Czech/Slovak (National option 3 in PS encoding)
+    m_nationalMaps[6]['#'] = 0x0023;  // # (£ -> # in wxTED)
+    m_nationalMaps[6]['$'] = 0x016F;  // ů
+    m_nationalMaps[6]['@'] = 0x010D;  // č
+    m_nationalMaps[6]['['] = 0x0165;  // ť
+    m_nationalMaps[6]['\\'] = 0x017E; // ž
+    m_nationalMaps[6][']'] = 0x00FD;  // ý
+    m_nationalMaps[6]['^'] = 0x00ED;  // í
+    m_nationalMaps[6]['_'] = 0x0159;  // ř
+    m_nationalMaps[6]['`'] = 0x00E9;  // é
+    m_nationalMaps[6]['{'] = 0x00E1;  // á
+    m_nationalMaps[6]['|'] = 0x011B;  // ě
+    m_nationalMaps[6]['}'] = 0x00FA;  // ú
+    m_nationalMaps[6]['~'] = 0x0161;  // š
     
-    // 7-12 remain with English base for now
-    // TODO: Add Romanian, Serbian/Croatian/Slovenian, Estonian, 
-    //       Lettish/Lithuanian, Polish, Turkish mappings
+    // 7 = Romanian
+    m_nationalMaps[7]['#'] = 0x0023;  // #
+    m_nationalMaps[7]['$'] = 0x00A4;  // ¤
+    m_nationalMaps[7]['@'] = 0x0162;  // Ţ
+    m_nationalMaps[7]['['] = 0x00C2;  // Â
+    m_nationalMaps[7]['\\'] = 0x015E; // Ş
+    m_nationalMaps[7][']'] = 0x0102;  // Ă
+    m_nationalMaps[7]['^'] = 0x00CE;  // Î
+    m_nationalMaps[7]['_'] = 0x0131;  // ı
+    m_nationalMaps[7]['`'] = 0x0163;  // ţ
+    m_nationalMaps[7]['{'] = 0x00E2;  // â
+    m_nationalMaps[7]['|'] = 0x015F;  // ş
+    m_nationalMaps[7]['}'] = 0x0103;  // ă
+    m_nationalMaps[7]['~'] = 0x00EE;  // î
+    
+    // 8 = Serbian/Croatian/Slovenian
+    m_nationalMaps[8]['#'] = 0x0023;  // #
+    m_nationalMaps[8]['$'] = 0x00CB;  // Ë
+    m_nationalMaps[8]['@'] = 0x010C;  // Č
+    m_nationalMaps[8]['['] = 0x0106;  // Ć
+    m_nationalMaps[8]['\\'] = 0x017D; // Ž
+    m_nationalMaps[8][']'] = 0x0110;  // Đ
+    m_nationalMaps[8]['^'] = 0x0160;  // Š
+    m_nationalMaps[8]['_'] = 0x00EB;  // ë
+    m_nationalMaps[8]['`'] = 0x010D;  // č
+    m_nationalMaps[8]['{'] = 0x0107;  // ć
+    m_nationalMaps[8]['|'] = 0x017E;  // ž
+    m_nationalMaps[8]['}'] = 0x0111;  // đ
+    m_nationalMaps[8]['~'] = 0x0161;  // š
+    
+    // 9 = Estonian (use English as placeholder)
+    m_nationalMaps[9] = m_nationalMaps[0];
+    
+    // 10 = Lettish/Lithuanian (use English as placeholder)
+    m_nationalMaps[10] = m_nationalMaps[0];
+    
+    // 11 = Polish
+    m_nationalMaps[11]['#'] = 0x0023;  // #
+    m_nationalMaps[11]['$'] = 0x0144;  // ń
+    m_nationalMaps[11]['@'] = 0x0105;  // ą
+    m_nationalMaps[11]['['] = 0x01B5;  // Ƶ
+    m_nationalMaps[11]['\\'] = 0x015A; // Ś
+    m_nationalMaps[11][']'] = 0x0141;  // Ł
+    m_nationalMaps[11]['^'] = 0x0107;  // ć
+    m_nationalMaps[11]['_'] = 0x00F3;  // ó
+    m_nationalMaps[11]['`'] = 0x0119;  // ę
+    m_nationalMaps[11]['{'] = 0x017C;  // ż
+    m_nationalMaps[11]['|'] = 0x015B;  // ś
+    m_nationalMaps[11]['}'] = 0x0142;  // ł
+    m_nationalMaps[11]['~'] = 0x017A;  // ź
+    
+    // 12 = Turkish
+    m_nationalMaps[12]['#'] = 0x0167;  // ŧ
+    m_nationalMaps[12]['$'] = 0x011F;  // ğ
+    m_nationalMaps[12]['@'] = 0x0130;  // İ
+    m_nationalMaps[12]['['] = 0x015E;  // Ş
+    m_nationalMaps[12]['\\'] = 0x00D6; // Ö
+    m_nationalMaps[12][']'] = 0x00C7;  // Ç
+    m_nationalMaps[12]['^'] = 0x00DC;  // Ü
+    m_nationalMaps[12]['_'] = 0x011E;  // Ğ
+    m_nationalMaps[12]['`'] = 0x0131;  // ı
+    m_nationalMaps[12]['{'] = 0x015F;  // ş
+    m_nationalMaps[12]['|'] = 0x00F6;  // ö
+    m_nationalMaps[12]['}'] = 0x00E7;  // ç
+    m_nationalMaps[12]['~'] = 0x00FC;  // ü
 }
 
 wchar_t TeletextPage::ApplyNationalCharMap(uint8_t ch)
@@ -182,7 +238,7 @@ bool TeletextPage::ParseTTI(const std::vector<uint8_t>& data)
                 std::string psValue = line.substr(comma + 1);
                 // Convert hex string to integer
                 unsigned int ps = 0;
-                if (sscanf(psValue.c_str(), "%x", &ps) == 1)
+                if (sscanf_s(psValue.c_str(), "%x", &ps) == 1)
                 {
                     // Extract language bits (bits 7-9, mask 0x0380)
                     unsigned int langBits = ps & 0x0380;
@@ -853,8 +909,7 @@ void TeletextPage::DrawCell(HDC hdc, int row, int col, int cellWidth, int cellHe
         SetBkColor(hdc, GetColorRef(cell.background));
         
         wchar_t str[2] = { cell.character, 0 };
-        // Use DT_LEFT instead of DT_CENTER to avoid potential rendering issues
-        DrawTextW(hdc, str, 1, &textRect, DT_LEFT | DT_TOP | DT_SINGLELINE | DT_NOCLIP);
+        DrawTextW(hdc, str, 1, &textRect, DT_CENTER | DT_VCENTER | DT_SINGLELINE | DT_NOCLIP);
         
         SelectObject(hdc, hOldFont);
         DeleteObject(hFont);
