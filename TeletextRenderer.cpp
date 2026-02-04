@@ -329,7 +329,11 @@ bool TeletextPage::ParseTTI(const std::vector<uint8_t>& data)
 bool TeletextPage::ParseEP1(const std::vector<uint8_t>& data)
 {
     // EP1 format:
-    // Header: 6 bytes (FE 01 09 00 00 00)
+    // Header: 6 bytes
+    //   - Byte 0: 0xFE (format identifier)
+    //   - Byte 1: 0x01 (version)
+    //   - Byte 2: Language/type byte (contains national option in bits 1-3)
+    //   - Bytes 3-5: 0x00 0x00 0x00 (reserved)
     // Data: 24 rows × 40 characters = 960 bytes
     // Footer: 2 bytes (00 00)
     // Total: 968 bytes minimum
@@ -339,10 +343,30 @@ bool TeletextPage::ParseEP1(const std::vector<uint8_t>& data)
         return false;
     }
     
-    // Verify header
-    if (data[0] != 0xFE || data[1] != 0x01 || data[2] != 0x09)
+    // Verify header signature (bytes 0-1)
+    if (data[0] != 0xFE || data[1] != 0x01)
     {
         return false;
+    }
+    
+    // Extract language information from byte 2
+    // Bits 1-3 encode the national character set (similar to PS command bits 7-9)
+    uint8_t languageByte = data[2];
+    uint8_t nationalBits = (languageByte >> 1) & 0x07;
+    
+    // Map EP1 language bits to national option index
+    // Based on ETS 300 706 teletext standard
+    switch (nationalBits)
+    {
+        case 0: m_nationalOption = 0; break; // English
+        case 1: m_nationalOption = 4; break; // French
+        case 2: m_nationalOption = 2; break; // Swedish/Finnish
+        case 3: m_nationalOption = 6; break; // Czech/Slovak
+        case 4: m_nationalOption = 1; break; // German
+        case 5: m_nationalOption = 5; break; // Portuguese/Spanish
+        case 6: m_nationalOption = 3; break; // Italian
+        case 7: m_nationalOption = 0; break; // Reserved (default to English)
+        default: m_nationalOption = 0; break;
     }
     
     // Parse 24 rows of data (rows 0-23 in the file, which map to rows 1-24 in our array)
@@ -442,7 +466,31 @@ bool TeletextPage::ParseEP1(const std::vector<uint8_t>& data)
             }
         }
         
+        // Fill any remaining columns with spaces
+        while (colIndex < SCREEN_COLS)
+        {
+            m_cells[teletextRow][colIndex].character = L' ';
+            m_cells[teletextRow][colIndex].foreground = WHITE;
+            m_cells[teletextRow][colIndex].background = BLACK;
+            m_cells[teletextRow][colIndex].graphics = false;
+            m_cells[teletextRow][colIndex].separated = false;
+            m_cells[teletextRow][colIndex].doubleHeight = false;
+            colIndex++;
+        }
+        
         offset += 40; // Move to next row
+    }
+    
+    // Row 0 (header row) is not stored in EP1 - initialize it to spaces
+    for (int col = 0; col < SCREEN_COLS; col++)
+    {
+        m_cells[0][col].character = L' ';
+        m_cells[0][col].foreground = WHITE;
+        m_cells[0][col].background = BLACK;
+        m_cells[0][col].graphics = false;
+        m_cells[0][col].separated = false;
+        m_cells[0][col].doubleHeight = false;
+        m_cells[0][col].held = false;
     }
     
     return true;

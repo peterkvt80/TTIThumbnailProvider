@@ -1,23 +1,25 @@
-# TTI Thumbnail Provider for Windows
+# TTI and EP1 Thumbnail Provider for Windows
 
 A Windows Shell Extension that automatically generates thumbnail previews for Teletext files (TTI and EP1 formats) in Windows Explorer.
 
 ## Overview
 
-This thumbnail provider reads TTI (Teletext) files and renders the first page as a thumbnail icon in Windows Explorer. The renderer parses the TTI format, interprets teletext control codes, and generates a bitmap image showing the teletext page with proper colors and formatting.
+This thumbnail provider reads TTI and EP1 teletext files and renders them as thumbnail icons in Windows Explorer. The renderer parses both text-based TTI format and binary EP1 format, interprets teletext control codes, and generates bitmap images showing the teletext pages with proper colors, graphics, and formatting.
 
 ## Features
 
 - **Automatic thumbnail generation** for .tti and .ep1 files in Windows Explorer
 - **Multiple format support**:
   - **TTI format**: Text-based teletext intermediate format with escaped control codes
-  - **EP1 format**: Binary teletext format (Edit.tf EP1 format)
+  - **EP1 format**: Binary teletext format (Edit.tf/wxTED/Flair32 format, 968 bytes)
 - **Teletext format support**:
-  - Standard 40x25 character teletext pages
+  - Standard 40×25 character teletext pages (rows 1-24 displayed)
   - Full color palette (8 colors: black, red, green, yellow, blue, magenta, cyan, white)
   - Alphanumeric and graphics modes
   - Control codes (color selection, background color, graphics modes)
-  - Block graphics characters
+  - Block graphics characters (contiguous and separated)
+  - Double height character rendering
+  - National character set support (13 languages including English, French, German, Swedish, Italian, Portuguese, Czech, Polish, Turkish, and more)
 - **Native Windows integration** using COM-based thumbnail handler
 - **Independent implementation** - no dependencies on wxTED or other teletext applications
 
@@ -97,7 +99,27 @@ TTIThumbnailProvider/
 
 ## Installation
 
-### Method 1: Using the Installation Script (Recommended)
+### Method 1: Using wxTED Installer (Easiest - Recommended)
+
+The simplest way to install the TTI/EP1 thumbnail provider is through the **wxTED installer**:
+
+1. Download wxTED from [github.com/peterkvt80/wxted](https://github.com/peterkvt80/wxted)
+2. Run the wxTED installer (setup.exe)
+3. During installation, select the **"TTI Thumbnail Provider"** component
+4. The installer will automatically:
+   - Install the thumbnail provider DLL
+   - Install the teletext2.ttf and teletext4.ttf fonts
+   - Register the thumbnail handler for .tti and .ep1 files
+   - Configure Windows Explorer integration
+
+**Advantages:**
+- ✅ Fully automated installation
+- ✅ Includes wxTED editor for creating and editing teletext files
+- ✅ Fonts and DLL installed to correct locations
+- ✅ Proper Windows registration and integration
+- ✅ Easy uninstallation through Windows Settings
+
+### Method 2: Manual Installation Using Script
 
 1. Build the project to create `TTIThumbnailProvider.dll`
 2. Copy the following files to a permanent location:
@@ -118,7 +140,7 @@ TTIThumbnailProvider/
 - **Option C**: Both (fonts in both locations work fine)
 - If fonts are missing from both locations, thumbnails will use Courier New (no graphics)
 
-### Method 2: Manual Registration
+### Method 3: Manual Registration (Advanced Users)
 
 1. Open Command Prompt as Administrator
 2. Navigate to the directory containing the DLL
@@ -127,6 +149,14 @@ TTIThumbnailProvider/
 5. Restart Windows Explorer
 
 ## Uninstallation
+
+### Using wxTED Uninstaller (Recommended)
+
+If you installed via wxTED installer:
+1. Open Windows Settings → Apps
+2. Find "wxTED" in the list
+3. Click Uninstall
+4. The thumbnail provider will be automatically removed along with wxTED
 
 ### Using the Uninstallation Script
 
@@ -211,15 +241,28 @@ The thumbnail provider implements these COM interfaces:
 
 ### Rendering Process
 
+**For TTI files:**
 1. **Stream Reading**: Reads the entire TTI file into memory
 2. **Parsing**: Parses TTI format line by line
    - Strips parity bit (bit 7) from all characters
    - Decodes ESC sequences: 0x1B followed by (code + 0x40)
+   - Parses PS command to extract national character set
    - Handles header row special case (8 leading space positions on row 0)
    - Processes control codes for colors and modes
-3. **Page Building**: Constructs a 40x25 character grid with color attributes
+3. **Page Building**: Constructs a 40×25 character grid with color attributes
 4. **Rendering**: Converts the character grid to a bitmap with proper scaling
 5. **Return**: Provides the HBITMAP to Windows Explorer
+
+**For EP1 files:**
+1. **Stream Reading**: Reads the fixed 968-byte EP1 file
+2. **Validation**: Verifies header signature (FE 01 09)
+3. **Parsing**: Reads 24 rows × 40 characters (960 bytes)
+   - Strips parity bit (bit 7) from all characters
+   - Control codes stored as raw bytes (no ESC sequences)
+   - ESC character (0x1B) replaced with space (0x20)
+4. **Page Building**: Constructs a 40×25 character grid (row 0 initialized to spaces)
+5. **Rendering**: Converts the character grid to a bitmap with proper scaling
+6. **Return**: Provides the HBITMAP to Windows Explorer
 
 ### Graphics Character Encoding
 
